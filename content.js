@@ -1,4 +1,9 @@
-const phoneRegex = /(?:\+?\d{1,3}[\s\-.]?)?(?:\(?\d{2,4}\)?[\s\-.]?)?\d{3,4}[\s\-.]?\d{3,4}/g
+// More flexible phone pattern: allows varied groupings (e.g., +34 612 34 56 78, +39 06 6982)
+// Strategy: match a possible international prefix, optional area/leading group, then a series of blocks with separators.
+// We post-filter by total digit count (7-15) to reduce false positives.
+const phoneRegex = /(?<!\w)(?:\+|00)?\d[\d\s().-]{5,}\d(?!\w)/g
+const MIN_PHONE_DIGITS = 7
+const MAX_PHONE_DIGITS = 15
 
 const localeToCode = {
     'he-il': '972','en-us': '1','en-gb': '44','fr-fr': '33','de-de': '49','es-es': '34','it-it': '39','pt-br': '55','pt-pt': '351','ru-ru': '7','ar-sa': '966','ar-ae': '971','tr-tr': '90','nl-nl': '31','pl-pl': '48','sv-se': '46','no-no': '47','da-dk': '45','fi-fi': '358','ja-jp': '81','ko-kr': '82','zh-cn': '86','zh-tw': '886','hi-in': '91','id-id': '62','th-th': '66','vi-vn': '84','uk-ua': '380','ro-ro': '40','bg-bg': '359','cs-cz': '420','sk-sk': '421','el-gr': '30','hu-hu': '36','ie-ie': '353','is-is': '354','au-en': '61','nz-en': '64','ca-en': '1','ca-fr': '1'
@@ -52,40 +57,49 @@ function parsePhoneNumber(raw, countryCode) {
 }
 
 function wrapNodeWithIcons(textNode) {
-    const text = textNode.nodeValue
-    phoneRegex.lastIndex = 0
-    let last = 0
-    let m
-    const container = document.createElement('span')
-    container.style.display = 'inline'
+    // Avoid double-processing
+    if (textNode.__wa_processed) return;
+    textNode.__wa_processed = true;
+    const text = textNode.nodeValue;
+    phoneRegex.lastIndex = 0;
+    let last = 0;
+    let m;
+    const container = document.createElement('span');
+    container.style.display = 'inline';
     while ((m = phoneRegex.exec(text))) {
-        const start = m.index
-        const end = start + m[0].length
-        if (start > last) container.appendChild(document.createTextNode(text.slice(last, start)))
-        const wrap = document.createElement('span')
-        wrap.style.position = 'relative'
-        wrap.style.display = 'inline-block'
-        wrap.appendChild(document.createTextNode(m[0]))
-        const icon = document.createElement('img')
-        icon.src = chrome.runtime.getURL('icon.png')
-        icon.dataset.wa = m[0].replace(/[^\d+]/g, '')
-        icon.className = 'wa-icon'
-        icon.style.position = 'absolute'
-        icon.style.top = '50%'
-        icon.style.right = '-20px'
-        icon.style.transform = 'translateY(-50%)'
-        icon.style.width = '16px'
-        icon.style.height = '16px'
-        icon.style.opacity = '0.7'
-        icon.style.cursor = 'pointer'
-        icon.style.transition = 'opacity 0.2s'
-        icon.style.zIndex = '9999'
-        wrap.appendChild(icon)
-        container.appendChild(wrap)
-        last = end
+        const start = m.index;
+        const end = start + m[0].length;
+        // Digit normalization & length guard
+        const digitStr = m[0].replace(/[^\d]/g, '')
+        const digitCount = digitStr.length
+        if (digitCount < MIN_PHONE_DIGITS || digitCount > MAX_PHONE_DIGITS) {
+            continue
+        }
+        if (start > last) container.appendChild(document.createTextNode(text.slice(last, start)));
+        const wrap = document.createElement('span');
+        wrap.style.position = 'relative';
+        wrap.style.display = 'inline-block';
+        wrap.appendChild(document.createTextNode(m[0]));
+        const icon = document.createElement('img');
+        icon.src = chrome.runtime.getURL('icon.png');
+        icon.dataset.wa = m[0].replace(/[^\d+]/g, '');
+        icon.className = 'wa-icon';
+        icon.style.position = 'absolute';
+        icon.style.top = '50%';
+        icon.style.right = '-20px';
+        icon.style.transform = 'translateY(-50%)';
+        icon.style.width = '16px';
+        icon.style.height = '16px';
+        icon.style.opacity = '0.7';
+        icon.style.cursor = 'pointer';
+        icon.style.transition = 'opacity 0.2s';
+        icon.style.zIndex = '9999';
+        wrap.appendChild(icon);
+        container.appendChild(wrap);
+        last = end;
     }
-    if (last < text.length) container.appendChild(document.createTextNode(text.slice(last)))
-    if (textNode.parentNode) textNode.parentNode.replaceChild(container, textNode)
+    if (last < text.length) container.appendChild(document.createTextNode(text.slice(last)));
+    if (textNode.parentNode) textNode.parentNode.replaceChild(container, textNode);
 }
 
 function injectIconStyles() {
@@ -97,8 +111,15 @@ function injectIconStyles() {
 }
 
 function scanOnce() {
-    const nodes = getSafeTextNodes(document.body)
-    for (const tn of nodes) if (phoneRegex.test(tn.nodeValue)) wrapNodeWithIcons(tn)
+    const nodes = getSafeTextNodes(document.body);
+    for (const tn of nodes) {
+        if (tn.__wa_processed) continue; // already handled
+        const val = tn.nodeValue;
+        if (!val || val.length < 7) continue;
+        phoneRegex.lastIndex = 0; // reset before test because of global flag
+        if (!/[0-9]/.test(val)) continue; // must contain digits
+        if (phoneRegex.test(val)) wrapNodeWithIcons(tn);
+    }
 }
 
 function debounce(fn, wait) {

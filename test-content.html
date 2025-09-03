@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>WhatsApp Content Script Test</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+ body { font-family: system-ui, Arial, sans-serif; line-height: 1.4; margin: 2rem; }
+ h1 { font-size: 1.6rem; }
+ section { margin-bottom: 2rem; }
+ code, pre { background:#f4f4f7; padding:2px 4px; border-radius:4px; }
+ .dynamic { padding: .75rem; border:1px solid #ccc; min-height:2.5rem; }
+ .note { color:#555; font-size:.85rem; }
+ .grid { columns: 320px; column-gap: 2rem; }
+ .num-block { break-inside: avoid; margin:0 0 1rem; padding:.5rem .75rem; background:#fafafa; border:1px solid #e3e3e3; border-radius:6px; position:relative; }
+ .num-block b { display:block; font-size:.75rem; letter-spacing:.05em; text-transform:uppercase; color:#666; margin-bottom:4px; }
+ .excluded { background:#ffe7e7; }
+ mark { background:#fff1a8; }
+</style>
+</head>
+<body>
+<h1>Test Page: <code>content.js</code> Phone Number Detection</h1>
+<p>This page contains phone numbers in many international formats to manually verify icon injection. Open this file in Chrome with the extension enabled. If you want to test as a plain script injection, temporarily include <code>content.js</code> manually below (NOT needed when loaded as an extension content script).</p>
+
+<section>
+  <h2>Static Numbers</h2>
+  <div class="grid">
+    <div class="num-block"><b>US</b>+1 212-555-0199</div>
+    <div class="num-block"><b>US (dots)</b>+1.415.555.2671</div>
+    <div class="num-block"><b>US (no country)</b>(415) 555 8890</div>
+    <div class="num-block"><b>UK</b>(020) 7946 0958</div>
+    <div class="num-block"><b>Germany</b>+49 30 901820</div>
+    <div class="num-block"><b>France (leading 00)</b>0033 1 42 68 53 00</div>
+    <div class="num-block"><b>Israel</b>+972-54-123-4567</div>
+    <div class="num-block"><b>Israel (local)</b>054-123-4567</div>
+    <div class="num-block"><b>Italy</b>+39 06 6982</div>
+    <div class="num-block"><b>Brazil</b>+55 (11) 91234-5678</div>
+    <div class="num-block"><b>India</b>+91-98765 43210</div>
+    <div class="num-block"><b>Japan</b>+81 3-1234-5678</div>
+    <div class="num-block"><b>Australia (mobile)</b>+61 412 345 678</div>
+    <div class="num-block"><b>Canada</b>+1 604 555 7777</div>
+    <div class="num-block"><b>Spain</b>+34 612 34 56 78</div>
+    <div class="num-block"><b>Turkey</b>+90 532 123 45 67</div>
+    <div class="num-block"><b>UAE</b>+971 50 123 4567</div>
+    <div class="num-block"><b>Saudi</b>+966 50 123 4567</div>
+    <div class="num-block"><b>Russia</b>+7 916 123 45 67</div>
+    <div class="num-block"><b>Netherlands</b>+31 6 12 34 56 78</div>
+  </div>
+</section>
+
+<section>
+  <h2>Mixed In Text</h2>
+  <p>For inquiries call us at <mark>+1 650 555 0000</mark> or our EU desk <mark>+49 89 321 456 90</mark>. Legacy support (France): <mark>0033 4 91 22 11 00</mark>.</p>
+</section>
+
+<section>
+  <h2>Excluded Elements (Should NOT get icons)</h2>
+  <div class="num-block excluded"><b>Inside <code>&lt;code&gt;</code></b><code>+1 202 555 3131</code></div>
+  <div class="num-block excluded"><b>Inside <code>&lt;pre&gt;</code></b><pre>+44 20 7946 0000</pre></div>
+  <div class="num-block excluded"><b>Inside <code>&lt;textarea&gt;</code></b><textarea rows="2" cols="28">+972 54 222 1111</textarea></div>
+  <div class="num-block excluded"><b>Inside <code>&lt;input&gt;</code></b><input value="+34 611 222 333" /></div>
+  <div class="num-block excluded"><b>Content Editable</b><div contenteditable="true">Edit me: +55 11 99888 7766</div></div>
+</section>
+
+<section>
+  <h2>Dynamic Insertion Test</h2>
+  <p>Numbers below are added after delays to test MutationObserver performance.</p>
+  <div id="dynamic" class="dynamic"></div>
+  <button id="addMany">Add 200 random-looking numbers</button>
+</section>
+
+<section>
+  <h2>Stress Paragraph</h2>
+  <p id="longPara"></p>
+</section>
+
+<section>
+  <h2>SVG (Should be ignored)</h2>
+  <svg width="260" height="60">
+    <text x="10" y="35" font-size="14">+1 999 888 7777 (SVG text)</text>
+  </svg>
+  <p class="note">SVG text nodes should not be processed.</p>
+</section>
+
+<section>
+  <h2>Notes</h2>
+  <ul>
+    <li>Icons appear absolutely positioned; long lines may overlap if parent lines wrap tightly.</li>
+    <li>Verify clicking an icon opens <code>https://wa.me/&lt;parsedNumber&gt;</code> in a new tab.</li>
+    <li>Local-format numbers (e.g., 054-123-4567) will be prefixed with the fallback / stored country code.</li>
+  </ul>
+</section>
+
+<script>
+// Optional direct injection if NOT running via extension system (uncomment during raw testing):
+// const s = document.createElement('script'); s.src = './content.js'; document.head.appendChild(s);
+
+function randomDigitBlock(len){
+  let s='';
+  while(s.length < len) s += Math.floor(Math.random()*10);
+  return s;
+}
+
+// Populate long paragraph
+(function(){
+  const baseCountries = ['+1','+44','+972','+49','+33','+39','+55','+81','+61','+91'];
+  const parts = [];
+  for(let i=0;i<120;i++){
+    const cc = baseCountries[i % baseCountries.length];
+    parts.push(cc + ' ' + randomDigitBlock(3) + '-' + randomDigitBlock(4) + ' sample');
+  }
+  document.getElementById('longPara').textContent = parts.join(' | ');
+})();
+
+// Dynamic single inserts
+(function addSequential(i=0){
+  if (i >= 10) return; // 10 incremental insertions
+  const el = document.createElement('div');
+  el.textContent = 'Dynamic #' + (i+1) + ': +34 6' + randomDigitBlock(2) + ' ' + randomDigitBlock(2) + ' ' + randomDigitBlock(2) + ' ' + randomDigitBlock(2);
+  document.getElementById('dynamic').appendChild(el);
+  setTimeout(()=>addSequential(i+1), 600);
+})();
+
+// Bulk stress button
+ document.getElementById('addMany').addEventListener('click', ()=>{
+    const frag = document.createDocumentFragment();
+    for (let i=0;i<200;i++) {
+      const d = document.createElement('div');
+      d.textContent = '+91 ' + randomDigitBlock(5) + ' ' + randomDigitBlock(5);
+      frag.appendChild(d);
+    }
+    document.getElementById('dynamic').appendChild(frag);
+ });
+</script>
+</body>
+</html>
