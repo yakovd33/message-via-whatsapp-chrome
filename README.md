@@ -1,13 +1,11 @@
-<div align="center">
-	<img src="icon.png" alt="Message via WhatsApp Icon" width="96" height="96" />
+![Extension Icon](icon.png)
 
-	<h1>📨 Message via WhatsApp – Chrome Extension</h1>
-	<p>Instantly open a WhatsApp chat with any phone number found on a webpage – no saving to contacts required.</p>
+# 📨 Message via WhatsApp – Chrome Extension
 
-	<a href="https://chromewebstore.google.com/detail/message-via-whatsapp/obcfmbihiocgfmgflfidjlildciokgif" target="_blank"><img alt="Chrome Web Store" src="https://img.shields.io/badge/Install%20from%20Chrome%20Web%20Store-4285F4?logo=googlechrome&logoColor=white"></a>
-	<br />
-	<img alt="License" src="https://img.shields.io/badge/License-MIT-green"> <img alt="Maintained" src="https://img.shields.io/badge/Status-Active-success">
-</div>
+Instantly open a WhatsApp chat with any phone number found on a webpage – no saving to contacts required.
+
+[![Install from Chrome Web Store](https://img.shields.io/badge/Install%20from%20Chrome%20Web%20Store-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/message-via-whatsapp/obcfmbihiocgfmgflfidjlildciokgif)
+![License: MIT](https://img.shields.io/badge/License-MIT-green) ![Status: Active](https://img.shields.io/badge/Status-Active-success)
 
 ---
 
@@ -111,4 +109,6 @@ Thanks to the open-source community for inspiration around safe DOM processing a
 
 ### 💬 Need Help?
 Open an issue or submit a PR. Enjoy faster WhatsApp messaging! ✨
+
+Portfolio: https://yakovcode.com
 
