@@ -1,4 +1,4 @@
-![Extension Icon](icon.png)
+[![Extension Icon](icon.png)](https://chromewebstore.google.com/detail/message-via-whatsapp/obcfmbihiocgfmgflfidjlildciokgif)
 
 # 📨 Message via WhatsApp – Chrome Extension
 
